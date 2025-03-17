@@ -2,7 +2,7 @@ package com.validator.controllers;
 
 import com.validator.models.dto.ColorAnalyzeReport;
 import com.validator.models.dto.TidyReport;
-import com.validator.models.dto.TidyUrlRequest;
+import com.validator.models.dto.UrlRequest;
 import com.validator.services.ContrastAnalyzer;
 import com.validator.services.TidyValidator;
 import com.validator.services.UrlProcessor;
@@ -25,7 +25,7 @@ public class UrlValidatorController {
     private final ContrastAnalyzer contrastAnalyzer;
 
     @PostMapping("/html")
-    public ResponseEntity<TidyReport> htmlTest(@RequestBody @Valid TidyUrlRequest url) {
+    public ResponseEntity<TidyReport> htmlTest(@RequestBody @Valid UrlRequest url) {
         Optional<String> html = urlProcessor.getHtml(url.getUrl());
         return html.map(s -> ResponseEntity.ok(tidyValidator.validate(s)))
                 .orElseGet(() -> ResponseEntity.notFound().build());
@@ -33,7 +33,7 @@ public class UrlValidatorController {
 
     // TODO make another request class
     @PostMapping("/color")
-    public ResponseEntity<ColorAnalyzeReport> colorTest(@RequestBody @Valid TidyUrlRequest url) {
+    public ResponseEntity<ColorAnalyzeReport> colorTest(@RequestBody @Valid UrlRequest url) {
         return ResponseEntity.ok(contrastAnalyzer.analyzeByUrl(url.getUrl()));
     }
 }

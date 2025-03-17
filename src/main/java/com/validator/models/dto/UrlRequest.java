@@ -4,7 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 @Data
-public class TidyUrlRequest {
+public class UrlRequest {
     @NotBlank
     private String url;
 }
