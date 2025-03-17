@@ -10,4 +10,5 @@ import java.util.Map;
 public class ColorAnalyzeElement {
     private Map<String, ColorWrapper.RgbColor> styles;
     private Map<String, Double> contrast;
+    private String fragment;
 }

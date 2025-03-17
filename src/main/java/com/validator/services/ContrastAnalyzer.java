@@ -60,6 +60,8 @@ public class ContrastAnalyzer {
             Set<Map<String, ColorWrapper.RgbColor>> uniqueStyles = new HashSet<>();
             log.info("Started to analyze {}", url);
 
+            ColorAnalyzeReport colorAnalyzeReport = generateColorAnalyzeReport(uniqueStyles);
+
             for (WebElement element : elements) {
                 if (hasChildrenMore(element)) continue;
                 Map<String, ColorWrapper.RgbColor> styles = getComputedStyles(driver, element)
@@ -69,10 +71,17 @@ public class ContrastAnalyzer {
                         .filter(Optional::isPresent)
                         .map(Optional::get)
                         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-                uniqueStyles.add(styles);
+
+                if (!uniqueStyles.contains(styles)) {
+                    uniqueStyles.add(styles);
+                    String outerHTML = element.getAttribute("outerHTML");
+                    Map<String, Double> contrast = evaluateContrast(styles, styles.get(CSS_BACKGROUND_PARAMETER));
+                    colorAnalyzeReport.getElements().add(new ColorAnalyzeElement(styles, contrast, outerHTML));
+                }
+
             }
 
-            ColorAnalyzeReport colorAnalyzeReport = generateColorAnalyzeReport(uniqueStyles);
+//            ColorAnalyzeReport colorAnalyzeReport = generateColorAnalyzeReport(uniqueStyles);
             log.info("{} blocks was found and processed by {}", uniqueStyles.size(), url);
             return colorAnalyzeReport;
         } finally {
@@ -86,7 +95,7 @@ public class ContrastAnalyzer {
 
         uniqueStyles.forEach(styles -> {
             Map<String, Double> contrast = evaluateContrast(styles, styles.get(CSS_BACKGROUND_PARAMETER));
-            colorAnalyzeReport.getElements().add(new ColorAnalyzeElement(styles, contrast));
+//            colorAnalyzeReport.getElements().add(new ColorAnalyzeElement(styles, contrast));
         });
 
         return colorAnalyzeReport;
