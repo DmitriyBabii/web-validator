@@ -36,5 +36,7 @@ public class ColorWrapper {
             double a = alpha / MAX_VALUE;
             return (int) Math.round(blue * a + MAX_VALUE * (1 - a));
         }
+
+
     }
 }

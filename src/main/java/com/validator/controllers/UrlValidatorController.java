@@ -1,5 +1,6 @@
 package com.validator.controllers;
 
+import com.validator.models.dto.ColorAnalyzeReport;
 import com.validator.models.dto.TidyReport;
 import com.validator.models.dto.TidyUrlRequest;
 import com.validator.services.ContrastAnalyzer;
@@ -30,8 +31,9 @@ public class UrlValidatorController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    // TODO make another request class
     @PostMapping("/color")
-    public void colorTest(@RequestBody @Valid TidyUrlRequest url) {
-
+    public ResponseEntity<ColorAnalyzeReport> colorTest(@RequestBody @Valid TidyUrlRequest url) {
+        return ResponseEntity.ok(contrastAnalyzer.analyzeByUrl(url.getUrl()));
     }
 }

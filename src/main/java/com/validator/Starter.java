@@ -14,7 +14,7 @@ public class Starter implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        contrastAnalyzer.analyzeByUrl("https://github.com/validator/validator/pkgs/container/validator");
+//        contrastAnalyzer.analyzeByUrl("https://github.com/validator/validator/pkgs/container/validator");
     }
 
 }
