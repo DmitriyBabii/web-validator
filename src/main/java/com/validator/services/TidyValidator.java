@@ -33,7 +33,10 @@ public class TidyValidator {
         return tidyReport;
     }
 
-    private static void addMessageReport(TidyMessage message, List<TidyMessageReport> messageReports) {
+    private void addMessageReport(TidyMessage message, List<TidyMessageReport> messageReports) {
+        if (message.getMessage().contains("unknown attribute")) {
+            return;
+        }
         messageReports.add(
                 TidyMessageReport.builder()
                         .level(message.getLevel().toString())
