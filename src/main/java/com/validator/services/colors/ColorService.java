@@ -1,9 +1,6 @@
 package com.validator.services.colors;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.validator.configs.RedisConfig;
-import com.validator.models.dto.ColorWrapper;
-import org.openqa.selenium.support.Color;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
