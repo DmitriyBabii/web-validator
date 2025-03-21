@@ -5,6 +5,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
 
 @Configuration
@@ -18,6 +19,6 @@ public class SeleniumConfig {
 
     @Bean("driverUrl")
     public URL driverUrl() throws MalformedURLException {
-        return new URL(DRIVER_URL);
+        return URL.of(URI.create(DRIVER_URL), null);
     }
 }

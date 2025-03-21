@@ -31,7 +31,6 @@ public class UrlValidatorController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    // TODO make another request class
     @PostMapping("/color")
     public ResponseEntity<ColorAnalyzeReport> colorTest(@RequestBody @Valid UrlRequest url) {
         return ResponseEntity.ok(contrastAnalyzer.analyzeByUrl(url.getUrl()));
