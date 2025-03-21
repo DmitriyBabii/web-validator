@@ -1,0 +1,18 @@
+version: "3.7"
+
+services:
+  selenium:
+    container_name: selenium-chrome
+    image: selenium/standalone-chrome
+    ports:
+      - "4444:4444"
+    restart: unless-stopped
+
+  redis:
+    container_name: redis-p
+    image: redis
+    environment:
+      - REDIS_PASSWORD=redis_password
+    ports:
+      - "6379:6379"
+    restart: unless-stopped

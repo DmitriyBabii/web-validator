@@ -1,4 +1,4 @@
-package com.validator.services;
+package com.validator.services.colors;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.validator.models.dto.ColorAnalyzeElement;
@@ -18,7 +18,6 @@ import org.springframework.stereotype.Service;
 import java.net.URL;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Service
 @Slf4j
@@ -36,19 +35,35 @@ public class ContrastAnalyzer {
             var element = arguments[0];
             var styles = window.getComputedStyle(element);
             var styleMap = {};
+            
+            var relevantStyles = [
+                "color", "border-color", "border-top-color", "border-right-color",
+                "border-bottom-color", "border-left-color", "box-shadow", "text-shadow",
+                "outline-color", "outline", "background-color"
+            ];
+            
             for (var i = 0; i < styles.length; i++) {
-                styleMap[styles[i]] = styles.getPropertyValue(styles[i]);
+                var key = styles[i];
+                if (relevantStyles.includes(key)) {
+                    var value = styles.getPropertyValue(key);
+                    // Пропускаємо стилі, які не мають значення або пусті
+                    if (value !== '' && value !== null) {
+                        styleMap[key] = value;
+                    }
+                }
             }
             return styleMap;
             """;
 
-    private static final Map<String, Double> illuminanceCache = new HashMap<>();
+
 
     private final ChromeOptions chromeOptions;
+    private final ColorService colorService;
     private final URL driverUrl;
 
-    public ContrastAnalyzer(ChromeOptions chromeOptions, @Qualifier("driverUrl") URL driverUrl) {
+    public ContrastAnalyzer(ChromeOptions chromeOptions, ColorService colorService, @Qualifier("driverUrl") URL driverUrl) {
         this.chromeOptions = chromeOptions;
+        this.colorService = colorService;
         this.driverUrl = driverUrl;
     }
 
@@ -56,11 +71,12 @@ public class ContrastAnalyzer {
         WebDriver driver = new RemoteWebDriver(driverUrl, chromeOptions);
         try {
             driver.get(url);
+
             List<WebElement> elements = driver.findElements(By.cssSelector(CSS_SELECTOR));
             Set<Map<String, ColorWrapper.RgbColor>> uniqueStyles = new HashSet<>();
             log.info("Started to analyze {}", url);
 
-            ColorAnalyzeReport colorAnalyzeReport = generateColorAnalyzeReport(uniqueStyles);
+            ColorAnalyzeReport colorAnalyzeReport = new ColorAnalyzeReport();
 
             for (WebElement element : elements) {
                 if (hasChildrenMore(element)) continue;
@@ -81,24 +97,12 @@ public class ContrastAnalyzer {
 
             }
 
-//            ColorAnalyzeReport colorAnalyzeReport = generateColorAnalyzeReport(uniqueStyles);
             log.info("{} blocks was found and processed by {}", uniqueStyles.size(), url);
             return colorAnalyzeReport;
         } finally {
             driver.close();
             driver.quit();
         }
-    }
-
-    private ColorAnalyzeReport generateColorAnalyzeReport(Set<Map<String, ColorWrapper.RgbColor>> uniqueStyles) {
-        ColorAnalyzeReport colorAnalyzeReport = new ColorAnalyzeReport();
-
-        uniqueStyles.forEach(styles -> {
-            Map<String, Double> contrast = evaluateContrast(styles, styles.get(CSS_BACKGROUND_PARAMETER));
-//            colorAnalyzeReport.getElements().add(new ColorAnalyzeElement(styles, contrast));
-        });
-
-        return colorAnalyzeReport;
     }
 
     private Optional<Map.Entry<String, ColorWrapper.RgbColor>> convertEntryValueToRgbColor(Map.Entry<String, String> entry) {
@@ -138,40 +142,9 @@ public class ContrastAnalyzer {
         }
     }
 
-    private double calculateLuminance(int r, int g, int b) {
-
-        String key = getIlluminanceCacheKey(r, g, b);
-
-        Double cachedValue = illuminanceCache.get(key);
-        if (cachedValue != null) {
-            return cachedValue;
-        }
-
-        double[] rgb = {r / 255.0, g / 255.0, b / 255.0};
-
-        for (int i = 0; i < 3; i++) {
-            if (rgb[i] <= 0.03928) {
-                rgb[i] = rgb[i] / 12.92;
-            } else {
-                rgb[i] = Math.pow((rgb[i] + 0.055) / 1.055, 2.4);
-            }
-        }
-
-        double value = 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];
-        illuminanceCache.put(key, value);
-
-        return value;
-    }
-
-    private String getIlluminanceCacheKey(int r, int g, int b) {
-        return Stream.of(r, g, b)
-                .map(String::valueOf)
-                .collect(Collectors.joining(","));
-    }
-
     private double calculateContrastRatio(ColorWrapper.RgbColor color1, ColorWrapper.RgbColor color2) {
-        double luminance1 = calculateLuminance(color1.getRed(), color1.getGreen(), color1.getBlue());
-        double luminance2 = calculateLuminance(color2.getRed(), color2.getGreen(), color2.getBlue());
+        double luminance1 = colorService.calculateLuminance(color1.getRed(), color1.getGreen(), color1.getBlue());
+        double luminance2 = colorService.calculateLuminance(color2.getRed(), color2.getGreen(), color2.getBlue());
 
         double max = Math.max(luminance1, luminance2);
         double min = Math.min(luminance1, luminance2);
@@ -187,7 +160,6 @@ public class ContrastAnalyzer {
                         entry -> calculateContrastRatio(entry.getValue(), backgroundColor)
                 ));
     }
-
 
     private ColorWrapper.RgbColor convertToRgbColor(Color color) {
         ObjectMapper objectMapper = new ObjectMapper();

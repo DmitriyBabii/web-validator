@@ -1,6 +1,6 @@
 package com.validator;
 
-import com.validator.services.ContrastAnalyzer;
+import com.validator.services.colors.ContrastAnalyzer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;

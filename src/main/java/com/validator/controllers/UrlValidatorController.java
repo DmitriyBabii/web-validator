@@ -3,7 +3,7 @@ package com.validator.controllers;
 import com.validator.models.dto.ColorAnalyzeReport;
 import com.validator.models.dto.TidyReport;
 import com.validator.models.dto.UrlRequest;
-import com.validator.services.ContrastAnalyzer;
+import com.validator.services.colors.ContrastAnalyzer;
 import com.validator.services.TidyValidator;
 import com.validator.services.UrlProcessor;
 import jakarta.validation.Valid;
