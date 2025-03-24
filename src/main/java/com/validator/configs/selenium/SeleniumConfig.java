@@ -1,4 +1,4 @@
-package com.validator.configs;
+package com.validator.configs.selenium;
 
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.springframework.context.annotation.Bean;
@@ -13,12 +13,16 @@ public class SeleniumConfig {
     private static final String DRIVER_URL = "http://localhost:4444/wd/hub";
 
     @Bean
-    public ChromeOptions chromeOptions() {
+    public SeleniumConnection seleniumConnection() throws MalformedURLException {
+        return new SeleniumConnection(chromeOptions(), driverUrl());
+    }
+
+
+    private ChromeOptions chromeOptions() {
         return new ChromeOptions();
     }
 
-    @Bean("driverUrl")
-    public URL driverUrl() throws MalformedURLException {
+    private URL driverUrl() throws MalformedURLException {
         return URL.of(URI.create(DRIVER_URL), null);
     }
 }

@@ -10,8 +10,8 @@ import java.util.Map;
 @Builder
 @AllArgsConstructor
 public class ColorAnalyzeElement {
-    private Map<String, ColorWrapper.RgbColor> styles;
+    private Map<String, ColorWrapper.RgbColor> colorStyles;
     private Map<String, Double> contrast;
-    private Map<String, String> other;
+    private Map<String, String> nonColorStyles;
     private String fragment;
 }
