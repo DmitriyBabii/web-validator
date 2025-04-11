@@ -7,5 +7,5 @@ import java.util.List;
 
 @Getter
 public class ColorAnalyzeReport {
-    private List<ColorAnalyzeElement> elements = new ArrayList<>();
+    private final List<ColorAnalyzeElement> elements = new ArrayList<>();
 }

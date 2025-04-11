@@ -4,9 +4,13 @@ import com.validator.configs.selenium.SeleniumConnection;
 import com.validator.models.dto.ColorAnalyzeElement;
 import com.validator.models.dto.ColorAnalyzeReport;
 import com.validator.models.dto.ColorWrapper;
+import com.validator.models.dto.ElementStyle;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.openqa.selenium.*;
+import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.StaleElementReferenceException;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
 import org.openqa.selenium.remote.RemoteWebDriver;
 import org.openqa.selenium.support.Color;
 import org.springframework.stereotype.Service;
@@ -34,24 +38,35 @@ public class ContrastAnalyzer {
             "border-bottom-width", CSS_BACKGROUND_PARAMETER
     );
 
-    private static final String GET_STYLES_JS_SCRIPT = String.format("""
-                    var element = arguments[0];
-                    var styles = window.getComputedStyle(element);
-                    var styleMap = {};
-                    var relevantStyles = %s;
-                    for (var i = 0; i < styles.length; i++) {
-                        var key = styles[i];
-                        if (relevantStyles.includes(key)) {
-                            var value = styles.getPropertyValue(key);
-                            if (value !== '' && value !== null) {
-                                styleMap[key] = value;
-                            }
-                        }
+    private static final String GET_STYLES_JS_SCRIPT = """
+            let elements = document.querySelectorAll(arguments[0]);
+            let relevantStyles = arguments[1];
+            let results = [];
+                        
+            for (let i = 0; i < elements.length; i++) {
+                let el = elements[i];
+                let styles = window.getComputedStyle(el);
+                let styleMap = {};
+                let hasAny = false;
+                                
+                for (let j = 0; j < relevantStyles.length; j++) {
+                    let key = relevantStyles[j];
+                    let val = styles.getPropertyValue(key);
+                    if (val && val.trim() !== '') {
+                        styleMap[key] = val;
+                        hasAny = true;
                     }
-                    return styleMap;
-                    """,
-            getCssParametersForScript()
-    );
+                }
+                                
+                if (hasAny) {
+                    results.push({
+                        outerHTML: el.outerHTML,
+                        styles: styleMap
+                    });
+                }
+            }
+            return results;
+            """;
 
     private final SeleniumConnection seleniumConnection;
     private final ColorService colorService;
@@ -63,52 +78,36 @@ public class ContrastAnalyzer {
 
         try {
             driver.get(url);
-            List<WebElement> elements = driver.findElements(By.cssSelector(CSS_SELECTOR));
+
             log.info("Started to analyze {}", url);
+            List<ElementStyle> elements = getElementStyles(driver);
 
-            for (WebElement element : elements) {
-                Map<String, String> styles = getComputedStyles(driver, element);
-
-                if (styles.isEmpty() || !uniqueStyles.add(styles)) {
+            for (ElementStyle element : elements) {
+                Map<String, String> styles = element.getStyles();
+                if (!uniqueStyles.add(styles)) {
                     continue;
                 }
 
-                getOuterHTML(element).ifPresent(outerHtml -> {
-                    Map<String, ColorWrapper.RgbColor> convertedColorStyles = convertColorStyles(styles);
-                    ColorWrapper.RgbColor backgroundColor = convertedColorStyles.getOrDefault(CSS_BACKGROUND_PARAMETER, ColorWrapper.RgbColor.DEFAULT);
+                Map<String, ColorWrapper.RgbColor> convertedColorStyles = convertColorStyles(styles);
+                ColorWrapper.RgbColor backgroundColor = convertedColorStyles.getOrDefault(CSS_BACKGROUND_PARAMETER, ColorWrapper.RgbColor.DEFAULT);
 
-                    if (!isValidBackground(backgroundColor)) return;
+                Map<String, String> nonColorStyles = getNonColorStyles(styles, convertedColorStyles);
+                Map<String, Double> contrast = evaluateContrast(convertedColorStyles, backgroundColor);
 
-                    Map<String, String> nonColorStyles = getNonColorStyles(styles, convertedColorStyles);
-                    Map<String, Double> contrast = evaluateContrast(convertedColorStyles, backgroundColor);
-
-                    colorAnalyzeReport.getElements().add(
-                            ColorAnalyzeElement.builder()
-                                    .colorStyles(convertedColorStyles)
-                                    .nonColorStyles(nonColorStyles)
-                                    .contrast(contrast)
-                                    .fragment(outerHtml)
-                                    .build()
-                    );
-                });
+                colorAnalyzeReport.getElements().add(
+                        ColorAnalyzeElement.builder()
+                                .colorStyles(convertedColorStyles)
+                                .nonColorStyles(nonColorStyles)
+                                .contrast(contrast)
+                                .fragment(element.getOuterHtml())
+                                .build()
+                );
             }
 
             log.info("{} blocks were found and processed by {}", colorAnalyzeReport.getElements().size(), url);
             return colorAnalyzeReport;
         } finally {
             driver.quit();
-        }
-    }
-
-    private static boolean isValidBackground(ColorWrapper.RgbColor background) {
-        return !background.equals(ColorWrapper.RgbColor.DEFAULT);
-    }
-
-    private static Optional<String> getOuterHTML(WebElement element) {
-        try {
-            return Optional.ofNullable(element.getAttribute("outerHTML"));
-        } catch (StaleElementReferenceException e) {
-            return Optional.empty();
         }
     }
 
@@ -140,21 +139,31 @@ public class ContrastAnalyzer {
         }
     }
 
-    private static Map<String, String> getComputedStyles(WebDriver driver, WebElement element) {
+    private static List<ElementStyle> getElementStyles(WebDriver driver) {
         try {
             JavascriptExecutor js = (JavascriptExecutor) driver;
 
             @SuppressWarnings("unchecked")
-            Map<String, String> styles = (Map<String, String>) js.executeScript(GET_STYLES_JS_SCRIPT, element);
+            List<Map<String, Object>> rawStyles = (List<Map<String, Object>>) Objects.requireNonNull(js.executeScript(
+                    GET_STYLES_JS_SCRIPT,
+                    CSS_SELECTOR,
+                    CSS_COLOR_PARAMETERS
+            ));
 
-            return Optional.ofNullable(styles)
-                    .orElse(Collections.emptyMap())
-                    .entrySet()
-                    .stream()
-                    .filter(entry -> CSS_COLOR_PARAMETERS.contains(entry.getKey()))
-                    .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+            return rawStyles.stream()
+                    .map(el -> {
+                        @SuppressWarnings("unchecked")
+                        Map<String, String> styles = (Map<String, String>) el.get("styles");
+                        return ElementStyle.builder()
+                                .outerHtml((String) el.get("outerHTML"))
+                                .styles(styles)
+                                .build();
+                    })
+                    .toList();
+
         } catch (Exception e) {
-            return Collections.emptyMap();
+            log.warn("Cant get styles: {}", e.getMessage());
+            return List.of();
         }
     }
 
@@ -175,12 +184,5 @@ public class ContrastAnalyzer {
                         Map.Entry::getKey,
                         entry -> calculateContrastRatio(entry.getValue(), backgroundColor)
                 ));
-    }
-
-
-    private static List<String> getCssParametersForScript() {
-        return CSS_COLOR_PARAMETERS.stream()
-                .map(str -> '"' + str + '"')
-                .toList();
     }
 }
