@@ -19,11 +19,10 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ContrastAnalyzer {
 
-    public static final int MAX_COUNT_OF_CHILDREN = 5;
+    public static final int MAX_COUNT_OF_CHILDREN = 3;
 
     private static final String CSS_BACKGROUND_PARAMETER = "background-color";
 
-    // TODO replace empty with custom getText validation
     private static final String CSS_SELECTOR = String.format(
             ":has(> h1 > h2, > h3, > p, > ul, > ol, > span, > a):not(:has(:empty), :has(:nth-child(%d)))",
             MAX_COUNT_OF_CHILDREN);
@@ -57,7 +56,7 @@ public class ContrastAnalyzer {
     private final SeleniumConnection seleniumConnection;
     private final ColorService colorService;
 
-    public ColorAnalyzeReport analyzeByUrl(String url) {
+    public synchronized ColorAnalyzeReport analyzeByUrl(String url) {
         WebDriver driver = new RemoteWebDriver(seleniumConnection.driverURL(), seleniumConnection.chromeOptions());
         ColorAnalyzeReport colorAnalyzeReport = new ColorAnalyzeReport();
         Set<Map<String, String>> uniqueStyles = new HashSet<>();
