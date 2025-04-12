@@ -8,9 +8,7 @@ import com.validator.models.dto.ElementStyle;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.openqa.selenium.JavascriptExecutor;
-import org.openqa.selenium.StaleElementReferenceException;
 import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
 import org.openqa.selenium.remote.RemoteWebDriver;
 import org.openqa.selenium.support.Color;
 import org.springframework.stereotype.Service;
@@ -89,6 +87,9 @@ public class ContrastAnalyzer {
                 }
 
                 Map<String, ColorWrapper.RgbColor> convertedColorStyles = convertColorStyles(styles);
+
+                log.info("Colored styles: {}", convertedColorStyles.size());
+
                 ColorWrapper.RgbColor backgroundColor = convertedColorStyles.getOrDefault(CSS_BACKGROUND_PARAMETER, ColorWrapper.RgbColor.DEFAULT);
 
                 Map<String, String> nonColorStyles = getNonColorStyles(styles, convertedColorStyles);
@@ -135,6 +136,8 @@ public class ContrastAnalyzer {
                     )
             );
         } catch (Exception e) {
+            log.error("Error: {}", e.getMessage());
+            log.info("Cant parse {} as colored", entry);
             return Optional.empty();
         }
     }

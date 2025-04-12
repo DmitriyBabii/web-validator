@@ -1,19 +1,37 @@
-version: "3.7"
-
 services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - DRIVER_URL=http://selenium:4444/wd/hub
+    restart: unless-stopped
+    depends_on:
+      - redis
+      - selenium
+    networks:
+      - validator-network
+
   selenium:
     container_name: selenium-chrome
     image: selenium/standalone-chrome
-    ports:
-      - "4444:4444"
     mem_reservation: 2g
     restart: unless-stopped
+    networks:
+      - validator-network
 
   redis:
     container_name: redis-p
     image: redis
-    environment:
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-password}
-    ports:
-      - "6379:6379"
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
     restart: unless-stopped
+    networks:
+      - validator-network
+
+networks:
+  validator-network:
+    external: true
